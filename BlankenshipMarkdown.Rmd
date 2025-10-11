@@ -1,0 +1,38 @@
+---
+title: "BlankenshipMarkdown"
+output: html_document
+---
+
+```{r DataImports+InitialLoads}
+    install.packages("ggplot2")
+    library(ggplot2)
+    install.packages("dplyr")
+    library(dplyr)
+    NYData <- read.csv("NYAPDatasetCSV.csv")
+    
+    NYDataAllStudents <- NYData %>% 
+      filter(
+        aggregation_code == "0",
+        SUBGROUP_NAME == "All Students")
+    NYDataDivided <- NYData %>% 
+      filter(
+        aggregation_code == "0",
+        SUBGROUP_NAME != "All Students")
+    rm(NYData)
+    
+```
+
+```{r DataCleaning}
+
+
+
+
+      
+```
+
+
+```{r DataVisual}
+  col_names <- colnames(NYData)
+  print(col_names)
+```
+
