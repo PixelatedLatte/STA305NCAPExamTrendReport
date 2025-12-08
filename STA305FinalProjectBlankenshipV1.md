@@ -1,32 +1,42 @@
----
-title: "STA305 Final Project Blankenship"
-date: "12/4/2025"
-output: rmarkdown::github_document
----
+STA305 Final Project Blankenship
+================
+12/4/2025
 
-General idea: First include a graph on distribution of good AP score's and maybe compare to to distribution of test takers, then make a graph comparing good AP score vs County population/Density to see if rural counties produce worse AP scorers. Finally create a linear model so see if county population/Density is a good predictor for AP exams.
+General idea: First include a graph on distribution of good AP score’s
+and maybe compare to to distribution of test takers, then make a graph
+comparing good AP score vs County population/Density to see if rural
+counties produce worse AP scorers. Finally create a linear model so see
+if county population/Density is a good predictor for AP exams.
 
 ### Report Section 1 - Introduction:
 
-In general terms I wanted to look and create interesting graphs of data in relation to test scores. 
+In general terms I wanted to look and create interesting graphs of data
+in relation to test scores.
 
-I found that North Carolina has a fairly robust and clean set of data in reference to it's census records and AP standardized test scores. The census data came from the State Demographer's Office who recorded population statistics in 2024. The AP score data came from College Board and was compiled and published by the North Carolina Department of Publish Instruction in December of 2025. The map data given to draw the counties came from the Maps R package created by Richard A. Becke, Allan R. Wilks, Ray Brownrigg, Thomas P. Minka, and Alex Deckmyn and last updated in May of 2025.
+I found that North Carolina has a fairly robust and clean set of data in
+reference to it’s census records and AP standardized test scores. The
+census data came from the State Demographer’s Office who recorded
+population statistics in 2024. The AP score data came from College Board
+and was compiled and published by the North Carolina Department of
+Publish Instruction in December of 2025. The map data given to draw the
+counties came from the Maps R package created by Richard A. Becke, Allan
+R. Wilks, Ray Brownrigg, Thomas P. Minka, and Alex Deckmyn and last
+updated in May of 2025.
 
-The specific variables I was looking for were:
-1. County Names
-2. Number of AP Exams taken by County
-3. Percent of passed AP Exams by County (3/5 or higher)
-4. Longitude and Latitude coordinates of counties to create map plots
+The specific variables I was looking for were: 1. County Names 2. Number
+of AP Exams taken by County 3. Percent of passed AP Exams by County (3/5
+or higher) 4. Longitude and Latitude coordinates of counties to create
+map plots
 
 Links to source are given below.
 
-https://www.osbm.nc.gov/facts-figures/population-demographics/state-demographer/county-population-estimates/certified-county-population-estimates
+<https://www.osbm.nc.gov/facts-figures/population-demographics/state-demographer/county-population-estimates/certified-county-population-estimates>
 
-https://www.dpi.nc.gov/2025-ap-test-results
-
+<https://www.dpi.nc.gov/2025-ap-test-results>
 
 #### Initial Imports
-```{r DataImports+InitialLoads, warning=FALSE, echo=TRUE, message = FALSE}
+
+``` r
 # initial packages install
 packages <- c("ggplot2", "dplyr", "readxl", "maps", "scales", "sf", "ggrepel", "tidymodels")
 missing <- packages[!(packages %in% installed.packages()[,"Package"])]
@@ -39,17 +49,22 @@ NCScoreData <- read_excel("Import2025NC.AP.RESULTS.xlsx")
 NCPopData <- read_excel("NCPopulationCensusData.xlsx")
 NCMapData <- map_data( "county", 
                    region = "north carolina" )
-
 ```
 
 ### Report Section 2 - Data Analysis:
 
-I wanted my explanatory variable to be the population and my predictor variable to be the AP exam proficient percent.
+I wanted my explanatory variable to be the population and my predictor
+variable to be the AP exam proficient percent.
 
-But before I could get valid data to look at. It needed a LOT of cleaning. Overall I did a cleaning of values, taking out invalid chars, adding data types, joining datasets together, computing Centroids for each county (mean wasn't accurate enough) and prep for my future visual (Top 5 vs Bottom 5 test taking counties) etc.
+But before I could get valid data to look at. It needed a LOT of
+cleaning. Overall I did a cleaning of values, taking out invalid chars,
+adding data types, joining datasets together, computing Centroids for
+each county (mean wasn’t accurate enough) and prep for my future visual
+(Top 5 vs Bottom 5 test taking counties) etc.
 
 #### Data Cleaning
-```{r DataCleaning, warning=FALSE, message = FALSE}
+
+``` r
 NCScoreData <- NCScoreData %>% rename_at(vars(3), ~ "County") %>% filter(is.na(`School System & School`)) %>% filter(grepl("County", County)) %>%
   select(
     `2025`,
@@ -136,7 +151,8 @@ CountyCenters <- CountyCenters %>%
 Now that my data is clean I can do general summary statistics by County
 
 #### Summary Statistics
-````{r SummaryStats}
+
+``` r
 CountyCenters %>%
   summarise(
     count = n(),
@@ -156,12 +172,26 @@ CountyCenters %>%
     min_exams = min(Exams, na.rm = TRUE),
     max_exams = max(Exams, na.rm = TRUE)
   )
-````
+```
 
-I needed a better way of showing the viewer what this data should look like. To combat this (especially to people that are unfamiliar with the AP exam or North Carolina), I wanted to create a weighted mapped plot of exam scores. This way people can get a representation of population density and overall performance in exams across the county before my model is created.
+    ## # A tibble: 1 × 13
+    ##   count mean_population sd_population min_population max_population
+    ##   <int>           <dbl>         <dbl>          <dbl>          <dbl>
+    ## 1   100         109831.       187200.           3477        1235748
+    ## # ℹ 8 more variables: mean_percentage <dbl>, sd_percentage <dbl>,
+    ## #   min_percentage <dbl>, max_percentage <dbl>, mean_exams <dbl>,
+    ## #   sd_exams <dbl>, min_exams <dbl>, max_exams <dbl>
 
-#### Visualization #1
-```{r DataVisual1, fig.width=8, fig.height=5, warning = FALSE}
+I needed a better way of showing the viewer what this data should look
+like. To combat this (especially to people that are unfamiliar with the
+AP exam or North Carolina), I wanted to create a weighted mapped plot of
+exam scores. This way people can get a representation of population
+density and overall performance in exams across the county before my
+model is created.
+
+#### Visualization \#1
+
+``` r
 # Labs + Theme
 JacobLabs1 <- labs(title = "North Carolina's Percent of Passed AP Exams by County",
                    subtitle = "2025 AP Exam Results",
@@ -212,10 +242,15 @@ NCScoreDataClean %>%
   JacobLabs1 + JacobTheme1
 ```
 
-Now that the user has a clear idea on the data I am making as well as a few names of counties to track for my other plot, we can try to see if a linear model is a good predictor of my values.
+![](STA305FinalProjectBlankenshipV1_files/figure-gfm/DataVisual1-1.png)<!-- -->
 
-#### Visualization #1
-```{r DataVisual2, warning=FALSE, message = FALSE}
+Now that the user has a clear idea on the data I am making as well as a
+few names of counties to track for my other plot, we can try to see if a
+linear model is a good predictor of my values.
+
+#### Visualization \#1
+
+``` r
    JacobLabs2 <- labs(title = "North Carolina's Proficent AP Test Scores vs Population vs Exams taken", caption = "2025 AP Exam Results, 2024 Census Data", y = "Percentage of passed AP Exams", x= "Population of County")
     JacobTheme2 <- theme_bw()
     CountyCenters %>%
@@ -257,9 +292,11 @@ Now that the user has a clear idea on the data I am making as well as a few name
       override.aes = list(shape = 21, fill = "#5d68fc", color = "white", stroke = 0.8)
     )
   )
+```
 
+![](STA305FinalProjectBlankenshipV1_files/figure-gfm/DataVisual2-1.png)<!-- -->
 
-
+``` r
 model_data <- CountyCenters %>%
   filter(!is.na(Population), !is.na(Percentage), Population > 0, Percentage > 0)
 
@@ -280,14 +317,54 @@ PolyReg <- linear_reg() %>%
 
 # Show coefficients
 LinReg %>% tidy()
-LogPopReg %>% tidy()
-PolyReg %>% tidy()
+```
 
+    ## # A tibble: 2 × 5
+    ##   term          estimate  std.error statistic  p.value
+    ##   <chr>            <dbl>      <dbl>     <dbl>    <dbl>
+    ## 1 (Intercept) 61.0       2.37           25.7  1.62e-39
+    ## 2 Population   0.0000155 0.00000987      1.57 1.21e- 1
+
+``` r
+LogPopReg %>% tidy()
+```
+
+    ## # A tibble: 2 × 5
+    ##   term            estimate std.error statistic p.value
+    ##   <chr>              <dbl>     <dbl>     <dbl>   <dbl>
+    ## 1 (Intercept)        37.1      21.8       1.70  0.0927
+    ## 2 log(Population)     2.32      1.94      1.20  0.234
+
+``` r
+PolyReg %>% tidy()
+```
+
+    ## # A tibble: 3 × 5
+    ##   term             estimate std.error statistic  p.value
+    ##   <chr>               <dbl>     <dbl>     <dbl>    <dbl>
+    ## 1 (Intercept)      5.93e+ 1  3.20e+ 0    18.5   6.15e-30
+    ## 2 Population       3.67e- 5  2.90e- 5     1.26  2.10e- 1
+    ## 3 I(Population^2) -1.94e-11  2.49e-11    -0.777 4.40e- 1
+
+``` r
 # Show R-squared
 glance(LinReg)$r.squared
+```
+
+    ## [1] 0.03097748
+
+``` r
 glance(LogPopReg)$r.squared
+```
+
+    ## [1] 0.0183111
+
+``` r
 glance(PolyReg)$r.squared
 ```
+
+    ## [1] 0.03861632
+
 **Linear:**
 
 County Exam Percentage = 60.99 + 0.0000155 x Population
@@ -302,13 +379,12 @@ R^2 = 0.0183111
 
 **Exponential/Polynomial:**
 
-County Exam Percentage = 59.33 + (3.67x10^-5) x Population - (1.94x10^-11) x Population^2
+County Exam Percentage = 59.33 + (3.67x10^-5) x Population -
+(1.94x10^-11) x Population^2
 
 R^2 = 0.03861632
 
-Overall there is little to no linear,logarithmic,or polynomial(n^2) correlational relationship between Population of County and County AP Exam Percentage. The best model we found was a Exponential model, but the difference is marginal.
-
-
-
-
-
+Overall there is little to no linear,logarithmic,or polynomial(n^2)
+correlational relationship between Population of County and County AP
+Exam Percentage. The best model we found was a Exponential model, but
+the difference is marginal.
