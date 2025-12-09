@@ -2,7 +2,7 @@
 title: "Relationship between Test Scores and Population: Report"
 author: "Jacob Blankenship"
 date: "12/4/2025"
-output: rmarkdown::github_document
+output: html_document
 ---
 
 General idea: First include a graph on distribution of good AP score's and maybe compare to to distribution of test takers, then make a graph comparing good AP score vs County population/Density to see if rural counties produce worse AP scorers. Finally create a linear model so see if county population/Density is a good predictor for AP exams.
