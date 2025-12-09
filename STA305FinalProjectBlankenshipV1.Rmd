@@ -1,5 +1,6 @@
 ---
-title: "STA305 Final Project Blankenship"
+title: "Relationship between Test Scores and Population: Report"
+author: "Jacob Blankenship"
 date: "12/4/2025"
 output: rmarkdown::github_document
 ---
@@ -8,15 +9,16 @@ General idea: First include a graph on distribution of good AP score's and maybe
 
 ### Report Section 1 - Introduction:
 
-In general terms I wanted to look and create interesting graphs of data in relation to test scores. 
-
-I found that North Carolina has a fairly robust and clean set of data in reference to it's census records and AP standardized test scores. The census data came from the State Demographer's Office who recorded population statistics in 2024. The AP score data came from College Board and was compiled and published by the North Carolina Department of Publish Instruction in December of 2025. The map data given to draw the counties came from the Maps R package created by Richard A. Becke, Allan R. Wilks, Ray Brownrigg, Thomas P. Minka, and Alex Deckmyn and last updated in May of 2025.
+In general terms I wanted to explore how academic performance differs across communities in North Carolina. The state provides clean publicly available data on AP standardized test scores and population estimates, which allow for geographic comparison of educational outcomes. Because AP exams are an optional indicator of advanced coursework, counties with more resources or larger student populations may perform differently.
 
 The specific variables I was looking for were:
 1. County Names
 2. Number of AP Exams taken by County
 3. Percent of passed AP Exams by County (3/5 or higher)
 4. Longitude and Latitude coordinates of counties to create map plots
+
+My Research question is:
+"Does population size of a North Carolina county predict AP exam success rates?”
 
 Links to source are given below.
 
@@ -46,7 +48,7 @@ NCMapData <- map_data( "county",
 
 I wanted my explanatory variable to be the population and my predictor variable to be the AP exam proficient percent.
 
-But before I could get valid data to look at. It needed a LOT of cleaning. Overall I did a cleaning of values, taking out invalid chars, adding data types, joining datasets together, computing Centroids for each county (mean wasn't accurate enough) and prep for my future visual (Top 5 vs Bottom 5 test taking counties) etc.
+Before any modeling or visualization, the datasets required extensive cleaning to ensure valid comparisons between maps and score data. This included removing duplicate regions, converting character fields to numeric values, standardizing county names, and computing geometric centroids for map labeling. It should also be noted that I edited the .xslx files that I directly downloaded as some small formatting changes made the file much more workable in r.
 
 #### Data Cleaning
 ```{r DataCleaning, warning=FALSE, message = FALSE}
@@ -133,7 +135,7 @@ CountyCenters <- CountyCenters %>%
   )
 ```
 
-Now that my data is clean I can do general summary statistics by County
+Now that my data is clean I can do general summary statistics by County.
 
 #### Summary Statistics
 ````{r SummaryStats}
@@ -212,7 +214,10 @@ NCScoreDataClean %>%
   JacobLabs1 + JacobTheme1
 ```
 
-Now that the user has a clear idea on the data I am making as well as a few names of counties to track for my other plot, we can try to see if a linear model is a good predictor of my values.
+This visualization highlights both the spatial variation in AP performance and the disparity in the number of test takers among counties, which helps motivate whether population should reasonably act as a predictor.
+
+I also wanted to understand whether AP performance changes with community size, I used population as an explanatory variable and AP score pass rate as the response variable. I then fit linear, log-linear, and polynomial models to compare whether the relationship is linear or non-linear, and if the correlational coefficient was better for said mappings.
+
 
 #### Visualization #1
 ```{r DataVisual2, warning=FALSE, message = FALSE}
@@ -288,6 +293,8 @@ glance(LinReg)$r.squared
 glance(LogPopReg)$r.squared
 glance(PolyReg)$r.squared
 ```
+The map above shows that while high population counties like Wake and Mecklenburg do have above average pass rates, much smaller counties such as Polk or Carteret outperform them significantly, suggesting that population may not drive quality.
+
 **Linear:**
 
 County Exam Percentage = 60.99 + 0.0000155 x Population
@@ -306,8 +313,15 @@ County Exam Percentage = 59.33 + (3.67x10^-5) x Population - (1.94x10^-11) x Pop
 
 R^2 = 0.03861632
 
-Overall there is little to no linear,logarithmic,or polynomial(n^2) correlational relationship between Population of County and County AP Exam Percentage. The best model we found was a Exponential model, but the difference is marginal.
+Overall there is little to no linear,logarithmic,or polynomial(n^2) correlational relationship between Population of County and County AP Exam Percentage. The best model, a polynomial regression, only slightly improved fit, suggesting no meaningful predictive relationship with our current dataset.
 
+Critiques:
+
+1. Several counties reported insufficient AP testing data, leading to missing values for roughly 20% of regions. This may bias estimates toward larger school systems with more complete reporting.
+
+2. Census estimates are from 2024, while AP results are from 2025; demographic changes within a year may reduce precision in population-based modeling.
+
+3. Things such as population density within counties is not taken into account. So if a very large school is shown in a very population low county, it would still flag as a small data point A more accurate marker to test may be average or median population in highschool's of each county.
 
 
 
