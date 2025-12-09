@@ -2,7 +2,7 @@
 title: "Relationship between Test Scores and Population: Report"
 author: "Jacob Blankenship"
 date: "12/4/2025"
-output: html_document
+output: pdf_document
 ---
 
 General idea: First include a graph on distribution of good AP score's and maybe compare to to distribution of test takers, then make a graph comparing good AP score vs County population/Density to see if rural counties produce worse AP scorers. Finally create a linear model so see if county population/Density is a good predictor for AP exams.
@@ -31,10 +31,11 @@ https://www.dpi.nc.gov/2025-ap-test-results
 ```{r DataImports+InitialLoads, warning=FALSE, echo=TRUE, message = FALSE}
 # initial packages install
 packages <- c("ggplot2", "dplyr", "readxl", "maps", "scales", "sf", "ggrepel", "tidymodels")
+# only install packages I haven't installed
 missing <- packages[!(packages %in% installed.packages()[,"Package"])]
 if (length(missing) > 0) install.packages(missing)
 
-# load packages + add NC map data (for polygons)
+# load datasets + add NC map data (for polygons)
 invisible(lapply(packages, library, character.only = TRUE))
 #https://www.dpi.nc.gov/2025-ap-test-results
 NCScoreData <- read_excel("Import2025NC.AP.RESULTS.xlsx")
@@ -52,6 +53,7 @@ Before any modeling or visualization, the datasets required extensive cleaning t
 
 #### Data Cleaning
 ```{r DataCleaning, warning=FALSE, message = FALSE}
+# Replace 3rd colum with correct name, filter out non schools, filter out *'s in dataset, convert tables to be named with clearer names, delete dupes, select only needed columns.
 NCScoreData <- NCScoreData %>% rename_at(vars(3), ~ "County") %>% filter(is.na(`School System & School`)) %>% filter(grepl("County", County)) %>%
   select(
     `2025`,
@@ -85,7 +87,7 @@ NCScoreData$GoodScore <- as.numeric(as.character(NCScoreData$GoodScore))
 
 #setequal(unique(NCMapData$subregion), unique(NCScoreDataClean$County))
 
-# Left join to get points
+# Left join to get points added to main data set
 NCScoreDataClean <- left_join(NCScoreData, NCMapData, by = c('County' = 'subregion'))
 
 # Manually put in centroid formula for accurate centered points (package wasn't working)
@@ -122,14 +124,16 @@ CountyCenters$subregion <- paste0(
   toupper(substr(CountyCenters$subregion, 1, 1)),
   substr(CountyCenters$subregion, 2, nchar(CountyCenters$subregion))
 )
+# taking out non-county points + left_join to add population data to main dataset
 NCPopData <- NCPopData %>% filter(County != "State of North Carolina")
-CountyCenters <- CountyCenters %>% left_join(NCPopData %>% select(County,Population),
-                                             by = c("subregion" = "County"))
+CountyCenters <- CountyCenters %>% 
+  left_join(NCPopData %>% select(County,Population), by = c("subregion" = "County"))
+# label best and worst counties
 CountyCenters <- CountyCenters %>%
   mutate(
     Highlight = case_when(
-      min_rank(Percentage) <= 5 ~ "Bottom 5",                     # 5 lowest percentages
-      min_rank(desc(Percentage)) <= 5 ~ "Top 5",                 # 5 highest percentages
+      min_rank(Percentage) <= 5 ~ "Bottom 5",# 5 lowest percentages
+      min_rank(desc(Percentage)) <= 5 ~ "Top 5",# 5 highest percentages
       TRUE ~ "Other"
     )
   )
@@ -139,6 +143,7 @@ Now that my data is clean I can do general summary statistics by County.
 
 #### Summary Statistics
 ````{r SummaryStats}
+# compute summary stats
 CountyCenters %>%
   summarise(
     count = n(),
@@ -185,7 +190,7 @@ NCScoreDataClean %>%
     y = lat,
     group = group,
     fill = Percentage
-  )) +
+  )) + # add polygons to create NC state map
   geom_polygon(color = "#999999") +
   scale_fill_gradient2(
     low = "#E81B23",
@@ -197,9 +202,9 @@ NCScoreDataClean %>%
     data = CountyCenters,
     aes(x = long, y = lat, size = Population, color = Highlight),
     inherit.aes = FALSE
-  ) +
+  ) + # label focuses points with correct colors
   scale_color_manual(values = c("Top 5" = "black", "Bottom 5" = "black", "Other" = "#999999")) + guides(color = "none") +
-  geom_text_repel(
+  geom_text_repel( # add names to focuses counties
     data = CountyCenters %>% filter(Highlight != "Other"),
     aes(label = subregion, x = long, y = lat),
     color = "black",
@@ -221,16 +226,17 @@ I also wanted to understand whether AP performance changes with community size, 
 
 #### Visualization #1
 ```{r DataVisual2, warning=FALSE, message = FALSE}
+# Labs + Theme
    JacobLabs2 <- labs(title = "North Carolina's Proficent AP Test Scores vs Population vs Exams taken", caption = "2025 AP Exam Results, 2024 Census Data", y = "Percentage of passed AP Exams", x= "Population of County")
     JacobTheme2 <- theme_bw()
-    CountyCenters %>%
+    CountyCenters %>% # taking out n/as
   filter(!is.na(Population), !is.na(Percentage), !is.na(Exams)) %>%
   ggplot(aes(x = Population, y = Percentage, size = Exams)) +
 
   # Linear
   geom_smooth(method = "lm", se = FALSE, aes(color = "Linear"), linetype = "solid") +
 
-  # Log-linear
+  # Log/Linear
   geom_smooth(method = "lm", formula = y ~ log(x), se = FALSE, aes(color = "Log(Pop)"), linetype = "solid") +
 
   # Quadratic
@@ -255,7 +261,7 @@ I also wanted to understand whether AP performance changes with community size, 
     point.padding = 0.1
   ) +
 
-  # Labels & theme
+  # Labels & theme application (also adding in colors for model lines)
   JacobLabs2 + JacobTheme2 +
   scale_color_manual(name = "Model Type", values = c("Linear" = "red", "Log(Pop)" = "purple", "Quadratic" = "darkgreen")) + guides(
     size = guide_legend(
@@ -264,7 +270,7 @@ I also wanted to understand whether AP performance changes with community size, 
   )
 
 
-
+# create model data with non-n/a values
 model_data <- CountyCenters %>%
   filter(!is.na(Population), !is.na(Percentage), Population > 0, Percentage > 0)
 
@@ -273,12 +279,12 @@ LinReg <- linear_reg() %>%
   set_engine("lm") %>%
   fit(Percentage ~ Population, data = model_data)
 
-# ️Log-linear: log(Population)
+# Log/linear model
 LogPopReg <- linear_reg() %>%
   set_engine("lm") %>%
   fit(Percentage ~ log(Population), data = model_data)
 
-# Polynomial
+# Polynomial model
 PolyReg <- linear_reg() %>%
   set_engine("lm") %>%
   fit(Percentage ~ Population + I(Population^2), data = model_data)
